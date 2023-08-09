@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tls-test
+  labels:
+    app: tls-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tls-test
+  template:
+    metadata:
+      labels:
+        app: tls-test
+    spec:
+      hostNetwork: true
+      dnsPolicy: Default
+      containers:
+        - name: tls-test
+          image: xiazhancr.azurecr.io/tls:v5
+          imagePullPolicy: Always
+          command: ["/go/src/tls/tls", "p1-xiazhan-tls-8ecadf-zk12gu4e.hcp.northcentralus.azmk8s.io"]
