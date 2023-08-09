@@ -13,8 +13,14 @@ import (
 var interrupt = make(chan os.Signal, 1)
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Please provide the load balancer URL")
+		return
+	}
+
 	// Replace the URL with your WebSocket server's URL.
-	url := "ws://localhost:8080/ws"
+	url := fmt.Sprintf("ws://%s:8080/ws", os.Args[1])
+	fmt.Println("Connecting to", url)
 
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
