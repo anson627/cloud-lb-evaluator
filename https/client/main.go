@@ -18,12 +18,12 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Please provide the load balancer URL")
+		fmt.Println("Please provide the load balancer URL or IP address.")
 		return
 	}
 
 	// Replace the URL with your WebSocket server's URL.
-	url := fmt.Sprintf("https://%s:8080/readyz", os.Args[1])
+	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
 	fmt.Println("Connecting to", url)
 
 	var count uint64

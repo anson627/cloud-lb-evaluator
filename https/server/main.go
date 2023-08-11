@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -24,13 +25,29 @@ func getLocalIP() string {
 }
 
 func main() {
-	localIP := getLocalIP()
+	// Serve the healthz endpoint.
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "ok\n")
+	})
 
+	localIP := getLocalIP()
 	// Serve the readyz endpoint.
 	http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("Received at %v from %s\n", time.Now(), localIP)
 		fmt.Fprintf(w, message)
 	})
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	httpServer := &http.Server{Addr: ":8080"}
+	go func() {
+		defer wg.Done()
+		log.Println("Starting HTTP server on port 8080")
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
 
 	// Load the custom CA certificate
 	caCert, err := ioutil.ReadFile("ca.crt")
@@ -57,14 +74,18 @@ func main() {
 		},
 	}
 
-	// Create an HTTP server with the custom TLS configuration
-	server := &http.Server{
-		Addr:      ":8080",
+	httpsServer := &http.Server{
+		Addr:      ":443",
 		TLSConfig: tlsConfig,
 	}
+	go func() {
+		defer wg.Done()
+		log.Println("Starting HTTPS server on port 443")
+		if err = httpsServer.ListenAndServeTLS("", ""); err != nil {
+			log.Fatal("Failed to start HTTPS server: ", err)
+		}
+	}()
 
-	log.Println("Starting server on 8080")
-	if err = server.ListenAndServeTLS("", ""); err != nil {
-		log.Fatal("Failed to start HTTPS server: ", err)
-	}
+	// Wait for both servers to finish.
+	wg.Wait()
 }
