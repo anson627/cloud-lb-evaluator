@@ -23,7 +23,7 @@ func main() {
 	}
 
 	// Replace the URL with your WebSocket server's URL.
-	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
+	url := fmt.Sprintf("https://%s:8443/readyz", os.Args[1])
 	fmt.Println("Connecting to", url)
 
 	var count uint64

@@ -75,12 +75,12 @@ func main() {
 	}
 
 	httpsServer := &http.Server{
-		Addr:      ":443",
+		Addr:      ":8443",
 		TLSConfig: tlsConfig,
 	}
 	go func() {
 		defer wg.Done()
-		log.Println("Starting HTTPS server on port 443")
+		log.Println("Starting HTTPS server on port 8443")
 		if err = httpsServer.ListenAndServeTLS("", ""); err != nil {
 			log.Fatal("Failed to start HTTPS server: ", err)
 		}
