@@ -95,16 +95,17 @@ func connect(config *tls.Config, url string) {
 	}
 
 	// Create an HTTP request.
+	createTime := time.Now()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf("%v, Failed to create request: %v\n", time.Now(), err)
+		fmt.Printf("%v, Failed to create request: %v\n", createTime, err)
 		return
 	}
 
-	// Send the request and get the response.o
+	// Send the request and get the response.
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("%v, Failed to send request: %v\n", time.Now(), err)
+		fmt.Printf("%v, %v, Failed to send request: %v\n", time.Now(), createTime, err)
 		dumpResponse(resp)
 		return
 	}
