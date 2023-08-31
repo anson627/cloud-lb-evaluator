@@ -5,7 +5,7 @@ GOFLAGS := -ldflags="-s -w"
 GOOS := linux
 GOARCH := amd64
 
-.PHONY: all build-server build-client clean
+.PHONY: all build-server build-client clean gen-certs release
 
 all: build-server build-client
 
@@ -22,6 +22,9 @@ build-client:
 clean:
 	@echo "Cleaning up server and client binaries..."
 	@rm -f $(SERVER_DIR)/server $(CLIENT_DIR)/client
+	@rm -f scripts/ca.* scripts/*.csr scripts/*.key
+	@rm -f server.tar.gz client.tar.gz
+	@rm -rf server_build client_build
 
 gen-certs:
 	@echo "Generating certificates..."
@@ -36,7 +39,6 @@ release: build-server build-client gen-certs
 	cp scripts/server.csr server_build/ && \
 	cp scripts/server.key server_build/
 	tar -czvf server.tar.gz server_build/
-	rm -rf server_build
 
 	@echo "Preparing client release..."
 	@mkdir -p client_build && \
@@ -46,4 +48,3 @@ release: build-server build-client gen-certs
 	cp scripts/client.csr client_build/ && \
 	cp scripts/client.key client_build/
 	tar -czvf client.tar.gz client_build/
-	rm -rf client_build
