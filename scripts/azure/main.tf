@@ -32,22 +32,14 @@ resource "azurerm_lb_backend_address_pool" "egress-lb-pool" {
   loadbalancer_id     = azurerm_lb.egress-lb.id
 }
 
-resource "azurerm_lb_probe" "egress-lb-probe" {
-  name                = "egress-lb-probe"
-  loadbalancer_id     = azurerm_lb.egress-lb.id
-  protocol            = "Tcp"
-  port                = 22
-}
-
-resource "azurerm_lb_rule" "egress-lb-rule" {
+resource "azurerm_lb_outbound_rule" "egress-lb-rule" {
   name                           = "egress-lb-rule"
-  protocol                       = "Tcp"
-  frontend_port                  = 22
-  backend_port                   = 22
-  frontend_ip_configuration_name = "egress-lb-frontend-ip"
   loadbalancer_id                = azurerm_lb.egress-lb.id
-  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.egress-lb-pool.id]
-  probe_id                       = azurerm_lb_probe.egress-lb-probe.id
+  protocol                       = "All"
+  backend_address_pool_id        = azurerm_lb_backend_address_pool.egress-lb-pool.id
+  frontend_ip_configuration {
+    name                         = "egress-lb-frontend-ip"
+  }
 }
 
 resource "azurerm_virtual_network" "client-vnet" {
@@ -95,12 +87,23 @@ resource "azurerm_network_security_rule" "client-nsr-ssh" {
   network_security_group_name = azurerm_network_security_group.client-nsg.name
 }
 
+resource "azurerm_network_interface_security_group_association" "client-nic-nsg-association" {
+  network_interface_id      = azurerm_network_interface.client-nic.id
+  network_security_group_id = azurerm_network_security_group.client-nsg.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "client-nic-lb-egress-pool-association" {
+  network_interface_id    = azurerm_network_interface.client-nic.id
+  ip_configuration_name   = "client-ipconfig"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.egress-lb-pool.id
+}
+
 resource "azurerm_linux_virtual_machine" "client-vm" {
   name                            = "client-vm"
   resource_group_name             = azurerm_resource_group.cle-rg.name
   location                        = azurerm_resource_group.cle-rg.location
   size                            = "Standard_D2ds_v5"
-  network_interface_ids           = [azurerm_network_interface.client-nic.id]  
+  network_interface_ids           = [azurerm_network_interface.client-nic.id]
 
   admin_username = "adminuser"
   admin_password = "P@$$w0rd1234!"
@@ -117,17 +120,6 @@ resource "azurerm_linux_virtual_machine" "client-vm" {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
-}
-
-resource "azurerm_network_interface_security_group_association" "client-nic-nsg-association" {
-  network_interface_id      = azurerm_network_interface.client-nic.id
-  network_security_group_id = azurerm_network_security_group.client-nsg.id
-}
-
-resource "azurerm_network_interface_backend_address_pool_association" "client-nic-lb-egress-pool-association" {
-  network_interface_id    = azurerm_network_interface.client-nic.id
-  ip_configuration_name   = azurerm_network_interface.client-nic.ip_configuration[0].name
-  backend_address_pool_id = azurerm_lb_backend_address_pool.egress-lb-pool.id
 }
 
 resource "azurerm_public_ip" "ingress-pip" {
@@ -152,12 +144,12 @@ resource "azurerm_lb" "ingress-lb" {
 
 resource "azurerm_lb_backend_address_pool" "ingress-lb-pool" {
   name                = "ingress-lb-pool"
-  loadbalancer_id     = azurerm_lb.egress-lb.id
+  loadbalancer_id     = azurerm_lb.ingress-lb.id
 }
 
 resource "azurerm_lb_probe" "ingress-lb-probe" {
   name                = "ingress-lb-probe"
-  loadbalancer_id     = azurerm_lb.egress-lb.id
+  loadbalancer_id     = azurerm_lb.ingress-lb.id
   protocol            = "Tcp"
   port                = 8080
 }
@@ -175,7 +167,7 @@ resource "azurerm_lb_rule" "ingress-lb-rule" {
 
 resource "azurerm_virtual_network" "server-vnet" {
   name                = "server-vnet"
-  address_space       = ["10.0.0.0/16"]
+  address_space       = ["10.1.0.0/16"]
   location            = azurerm_resource_group.cle-rg.location
   resource_group_name = azurerm_resource_group.cle-rg.name
 }
@@ -184,13 +176,18 @@ resource "azurerm_subnet" "server-subnet" {
   name                 = "server-subnet"
   resource_group_name  = azurerm_resource_group.cle-rg.name
   virtual_network_name = azurerm_virtual_network.server-vnet.name
-  address_prefixes     = ["10.0.1.0/24"]
+  address_prefixes     = ["10.1.0.0/24"]
 }
 
 resource "azurerm_network_security_group" "server-nsg" {
   name                = "server-nsg"
   location            = azurerm_resource_group.cle-rg.location
   resource_group_name = azurerm_resource_group.cle-rg.name
+}
+
+resource "azurerm_subnet_network_security_group_association" "subnet-nsg-association" {
+  subnet_id                 = azurerm_subnet.server-subnet.id
+  network_security_group_id = azurerm_network_security_group.server-nsg.id
 }
 
 resource "azurerm_network_security_rule" "server-nsr-ssh" {
@@ -269,9 +266,4 @@ resource "azurerm_linux_virtual_machine_scale_set" "server-vmss" {
       load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.ingress-lb-pool.id]
     }
   }
-}
-
-resource "azurerm_subnet_network_security_group_association" "subnet-nsg-association" {
-  subnet_id                 = azurerm_subnet.server-subnet.id
-  network_security_group_id = azurerm_network_security_group.server-nsg.id
 }
