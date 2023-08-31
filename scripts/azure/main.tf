@@ -2,6 +2,11 @@ provider "azurerm" {
   features {}
 }
 
+resource "tls_private_key" "admin-ssh-key" {
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
 resource "azurerm_resource_group" "cle-rg" {
   name     = "cle-rg"
   location = "East US"
@@ -106,8 +111,11 @@ resource "azurerm_linux_virtual_machine" "client-vm" {
   network_interface_ids           = [azurerm_network_interface.client-nic.id]
 
   admin_username = "adminuser"
-  admin_password = "P@$$w0rd1234!"
-  disable_password_authentication = false
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = tls_private_key.admin-ssh-key.public_key_openssh
+  }
+  disable_password_authentication = true
 
   source_image_reference {
     publisher = "Canonical"
@@ -240,8 +248,11 @@ resource "azurerm_linux_virtual_machine_scale_set" "server-vmss" {
   instances = 2
 
   admin_username = "adminuser"
-  admin_password = "P@$$w0rd1234!"
-  disable_password_authentication = false
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = tls_private_key.admin-ssh-key.public_key_openssh
+  }
+  disable_password_authentication = true
 
   source_image_reference {
     publisher = "Canonical"
@@ -266,4 +277,10 @@ resource "azurerm_linux_virtual_machine_scale_set" "server-vmss" {
       load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.ingress-lb-pool.id]
     }
   }
+}
+
+resource "local_file" "ssh-private-key" {
+  content  = tls_private_key.admin-ssh-key.private_key_pem
+  filename = "${path.module}/private_key.pem"
+  file_permission = "0600"
 }
