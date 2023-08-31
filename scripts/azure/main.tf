@@ -59,7 +59,33 @@ resource "azurerm_subnet" "client-subnet" {
   name                 = "client-subnet"
   resource_group_name  = azurerm_resource_group.cle-rg.name
   virtual_network_name = azurerm_virtual_network.client-vnet.name
-  address_prefixes     = ["10.0.0.0/24"]
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_subnet" "client-bastion-subnet" {
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.cle-rg.name
+  virtual_network_name = azurerm_virtual_network.client-vnet.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_public_ip" "client-pip" {
+  name                  = "client-pip"
+  location              = azurerm_resource_group.cle-rg.location
+  resource_group_name   = azurerm_resource_group.cle-rg.name
+  allocation_method     = "Static"
+  sku                   = "Standard"
+}
+
+resource "azurerm_bastion_host" "client-bastion" {
+  name                   = "client-bastion"
+  location               = azurerm_resource_group.cle-rg.location
+  resource_group_name    = azurerm_resource_group.cle-rg.name
+  ip_configuration {
+    name                 = "client-bastion-ipconfig"
+    subnet_id            = azurerm_subnet.client-bastion-subnet.id
+    public_ip_address_id = azurerm_public_ip.client-pip.id
+  }
 }
 
 resource "azurerm_network_interface" "client-nic" {
@@ -201,7 +227,33 @@ resource "azurerm_subnet" "server-subnet" {
   name                 = "server-subnet"
   resource_group_name  = azurerm_resource_group.cle-rg.name
   virtual_network_name = azurerm_virtual_network.server-vnet.name
-  address_prefixes     = ["10.1.0.0/24"]
+  address_prefixes     = ["10.1.1.0/24"]
+}
+
+resource "azurerm_subnet" "server-bastion-subnet" {
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.cle-rg.name
+  virtual_network_name = azurerm_virtual_network.server-vnet.name
+  address_prefixes     = ["10.1.2.0/24"]
+}
+
+resource "azurerm_public_ip" "server-pip" {
+  name                  = "server-pip"
+  location              = azurerm_resource_group.cle-rg.location
+  resource_group_name   = azurerm_resource_group.cle-rg.name
+  allocation_method     = "Static"
+  sku                   = "Standard"
+}
+
+resource "azurerm_bastion_host" "server-bastion" {
+  name                   = "server-bastion"
+  location               = azurerm_resource_group.cle-rg.location
+  resource_group_name    = azurerm_resource_group.cle-rg.name
+  ip_configuration {
+    name                 = "server-bastion-ipconfig"
+    subnet_id            = azurerm_subnet.server-bastion-subnet.id
+    public_ip_address_id = azurerm_public_ip.server-pip.id
+  }
 }
 
 resource "azurerm_network_security_group" "server-nsg" {
