@@ -42,6 +42,7 @@ resource "azurerm_lb_outbound_rule" "egress-lb-rule" {
   loadbalancer_id                = azurerm_lb.egress-lb.id
   protocol                       = "All"
   backend_address_pool_id        = azurerm_lb_backend_address_pool.egress-lb-pool.id
+  enable_tcp_reset               = true
   frontend_ip_configuration {
     name                         = "egress-lb-frontend-ip"
   }
@@ -65,6 +66,7 @@ resource "azurerm_network_interface" "client-nic" {
   name                            = "client-nic"
   location                        = azurerm_resource_group.cle-rg.location
   resource_group_name             = azurerm_resource_group.cle-rg.name
+  enable_accelerated_networking = true
   ip_configuration {
     name                          = "client-ipconfig"
     subnet_id                     = azurerm_subnet.client-subnet.id
@@ -92,8 +94,8 @@ resource "azurerm_network_security_rule" "client-nsr-ssh" {
   network_security_group_name = azurerm_network_security_group.client-nsg.name
 }
 
-resource "azurerm_network_interface_security_group_association" "client-nic-nsg-association" {
-  network_interface_id      = azurerm_network_interface.client-nic.id
+resource "azurerm_subnet_network_security_group_association" "client-subnet-nsg-association" {
+  subnet_id                 = azurerm_subnet.client-subnet.id
   network_security_group_id = azurerm_network_security_group.client-nsg.id
 }
 
@@ -158,8 +160,9 @@ resource "azurerm_lb_backend_address_pool" "ingress-lb-pool" {
 resource "azurerm_lb_probe" "ingress-lb-probe" {
   name                = "ingress-lb-probe"
   loadbalancer_id     = azurerm_lb.ingress-lb.id
-  protocol            = "Tcp"
+  protocol            = "Http"
   port                = 8080
+  request_path        = "/healthz"
 }
 
 resource "azurerm_lb_rule" "ingress-lb-rule" {
@@ -171,6 +174,20 @@ resource "azurerm_lb_rule" "ingress-lb-rule" {
   loadbalancer_id                = azurerm_lb.ingress-lb.id
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.ingress-lb-pool.id]
   probe_id                       = azurerm_lb_probe.ingress-lb-probe.id
+  enable_tcp_reset               = true
+  disable_outbound_snat          = true
+}
+
+resource "azurerm_lb_outbound_rule" "ingress-lb-outbound-rule" {
+  name                           = "ingress-lb-outbound-rule"
+  protocol                       = "All"
+  loadbalancer_id                = azurerm_lb.ingress-lb.id
+  backend_address_pool_id        = azurerm_lb_backend_address_pool.ingress-lb-pool.id
+  enable_tcp_reset               = true
+  idle_timeout_in_minutes        = 66
+  frontend_ip_configuration {
+    name                         = "ingress-lb-frontend-ip"
+  }
 }
 
 resource "azurerm_virtual_network" "server-vnet" {
@@ -269,6 +286,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "server-vmss" {
   network_interface {
     name    = "server-nic"
     primary = true
+    enable_accelerated_networking = true
 
     ip_configuration {
       name      = "server-ipconfig"
