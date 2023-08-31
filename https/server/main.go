@@ -75,7 +75,7 @@ func main() {
 	}
 
 	httpsServer := &http.Server{
-		Addr:              ":8443",
+		Addr:              ":4443",
 		TLSConfig:         tlsConfig,
 		ReadHeaderTimeout: 32 * time.Second, // https://github.com/kubernetes/kubernetes/blob/aa8cb97f65fe1d24e96eda129337d86109615570/staging/src/k8s.io/apiserver/pkg/server/secure_serving.go#L172
 	}
