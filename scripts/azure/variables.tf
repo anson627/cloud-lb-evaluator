@@ -1,10 +1,11 @@
 variable "resource_group_name" {
   description = "Value of the resource group name"
-  type = string
+  type        = string
+  default     = "cle-rg"
 }
 
 variable "location" {
   description = "Value of the location"
-  type = string
-  default = "East US"
+  type        = string
+  default     = "East US"
 }
