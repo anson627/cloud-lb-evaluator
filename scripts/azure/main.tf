@@ -37,10 +37,29 @@ resource "azurerm_lb_backend_address_pool" "egress-lb-pool" {
   loadbalancer_id     = azurerm_lb.egress-lb.id
 }
 
-resource "azurerm_lb_outbound_rule" "egress-lb-rule" {
+resource "azurerm_lb_probe" "egress-lb-probe" {
+  name                = "egress-lb-probe"
+  loadbalancer_id     = azurerm_lb.egress-lb.id
+  protocol            = "Tcp"
+  port                = 22
+}
+
+resource "azurerm_lb_rule" "egress-lb-rule" {
   name                           = "egress-lb-rule"
+  protocol                       = "Tcp"
+  frontend_port                  = 22
+  backend_port                   = 22
+  frontend_ip_configuration_name = "egress-lb-frontend-ip"
   loadbalancer_id                = azurerm_lb.egress-lb.id
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.egress-lb-pool.id]
+  probe_id                       = azurerm_lb_probe.egress-lb-probe.id
+  disable_outbound_snat          = true
+}
+
+resource "azurerm_lb_outbound_rule" "egress-lb-outbound-rule" {
+  name                           = "egress-lb-outbound-rule"
   protocol                       = "All"
+  loadbalancer_id                = azurerm_lb.egress-lb.id
   backend_address_pool_id        = azurerm_lb_backend_address_pool.egress-lb-pool.id
   enable_tcp_reset               = true
   frontend_ip_configuration {
@@ -81,6 +100,8 @@ resource "azurerm_bastion_host" "client-bastion" {
   name                   = "client-bastion"
   location               = azurerm_resource_group.cle-rg.location
   resource_group_name    = azurerm_resource_group.cle-rg.name
+  sku                    = "Standard"
+  tunneling_enabled      = true
   ip_configuration {
     name                 = "client-bastion-ipconfig"
     subnet_id            = azurerm_subnet.client-bastion-subnet.id
@@ -249,6 +270,8 @@ resource "azurerm_bastion_host" "server-bastion" {
   name                   = "server-bastion"
   location               = azurerm_resource_group.cle-rg.location
   resource_group_name    = azurerm_resource_group.cle-rg.name
+  sku                    = "Standard"
+  tunneling_enabled      = true
   ip_configuration {
     name                 = "server-bastion-ipconfig"
     subnet_id            = azurerm_subnet.server-bastion-subnet.id
