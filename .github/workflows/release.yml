@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - '*'
-permissions: read-all
+permissions: write-all
 
 jobs:
   build-and-release:
