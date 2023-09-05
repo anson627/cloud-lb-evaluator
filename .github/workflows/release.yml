@@ -34,22 +34,22 @@ jobs:
         draft: false
         prerelease: false
 
-    - name: Upload server_build.tar.gz
+    - name: Upload server.tar.gz
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./server_build.tar.gz
-        asset_name: server_build.tar.gz
+        asset_path: ./server.tar.gz
+        asset_name: server.tar.gz
         asset_content_type: application/gzip
 
-    - name: Upload client_build.tar.gz
+    - name: Upload client.tar.gz
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./client_build.tar.gz
-        asset_name: client_build.tar.gz
+        asset_path: ./client.tar.gz
+        asset_name: client.tar.gz
         asset_content_type: application/gzip
