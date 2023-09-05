@@ -8,8 +8,8 @@ resource "tls_private_key" "admin-ssh-key" {
 }
 
 resource "azurerm_resource_group" "cle-rg" {
-  name     = "cle-rg"
-  location = "East US"
+  name     = var.resource_group_name
+  location = var.location
 }
 
 resource "azurerm_public_ip" "egress-pip" {
