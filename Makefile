@@ -22,7 +22,7 @@ build-client:
 clean:
 	@echo "Cleaning up server and client binaries..."
 	@rm -f $(SERVER_DIR)/server $(CLIENT_DIR)/client
-	@rm -f scripts/ca.* scripts/*.csr scripts/*.key
+	@rm -f scripts/ca.* scripts/*.csr scripts/*.crt scripts/*.key
 	@rm -f server.tar.gz client.tar.gz
 	@rm -rf server_build client_build
 

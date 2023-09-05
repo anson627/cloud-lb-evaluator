@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -26,14 +27,24 @@ func main() {
 	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
 	fmt.Println("Connecting to", url)
 
-	var count uint64
+	var count, total uint64
 	count = 0
+	total = 1000000
+	if len(os.Args) > 2 {
+		total, _ = strconv.ParseUint(os.Args[2], 10, 64)
+	}
+	fmt.Printf("%v connections to be established\n", total)
 	config := createTlsConfig()
 
-	eg, ctx := errgroup.WithContext(context.Background())
+	// Create context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create an errgroup with derived context
+	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(10)
 
-	for ctx.Err() == nil {
+	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
 			connect(config, url)
 			v := atomic.AddUint64(&count, 1)
@@ -44,8 +55,10 @@ func main() {
 		})
 	}
 
-	fmt.Printf("The error is %s\n", ctx.Err())
-	//eg.Wait()
+	// Wait for all goroutines to complete or for an error to occur
+	if err := eg.Wait(); err != nil {
+		fmt.Printf("An error occurred: %v\n", err)
+	}
 }
 
 func createTlsConfig() *tls.Config {
@@ -56,7 +69,7 @@ func createTlsConfig() *tls.Config {
 		return nil
 	}
 
-	caCert, err := ioutil.ReadFile("ca.crt")
+	caCert, err := os.ReadFile("ca.crt")
 	if err != nil {
 		log.Fatalf("Error opening CA cert file, Error: %s", err)
 	}
@@ -123,7 +136,7 @@ func dumpResponse(resp *http.Response) {
 		return
 	}
 	fmt.Printf("%v, Response status: %v\n", time.Now(), resp.Status)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("%v, Failed to read response body: %v\n", time.Now(), err)
 		return

@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 )
@@ -50,7 +50,7 @@ func main() {
 	}()
 
 	// Load the custom CA certificate
-	caCert, err := ioutil.ReadFile("ca.crt")
+	caCert, err := os.ReadFile("ca.crt")
 	if err != nil {
 		log.Fatalf("Error loading CA certificate: %v", err)
 	}
@@ -81,7 +81,7 @@ func main() {
 	}
 	go func() {
 		defer wg.Done()
-		log.Println("Starting HTTPS server on port 8443")
+		log.Println("Starting HTTPS server on port 4443")
 		if err = httpsServer.ListenAndServeTLS("", ""); err != nil {
 			log.Fatal("Failed to start HTTPS server: ", err)
 		}
