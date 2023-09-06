@@ -11,9 +11,11 @@ tar -xzvf ${side}.tar.gz
 rm ${side}.tar.gz
 
 cd ${side}_build
-if [ ! -z "$side" ]; then
+if [[ "$side" == "client" ]]; then
+  echo "Running client"
   ./${side} $public_ip $iteration &> logs.txt &
 else
+  echo "Running server"
   ./${side} &> logs.txt &
 fi
 ps -ef | grep $side
