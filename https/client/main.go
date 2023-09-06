@@ -42,7 +42,7 @@ func main() {
 
 	// Create an errgroup with derived context
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(10)
+	eg.SetLimit(100)
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
