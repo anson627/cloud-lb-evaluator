@@ -9,3 +9,9 @@ variable "location" {
   type        = string
   default     = "East US"
 }
+
+variable "vm_sku" {
+  description = "Value of the VM SKU"
+  type        = string
+  default     = "Standard_D2ds_v5"
+}

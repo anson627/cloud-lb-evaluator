@@ -128,7 +128,7 @@ resource "azurerm_linux_virtual_machine" "client-vm" {
   name                            = "client-vm"
   resource_group_name             = azurerm_resource_group.cle-rg.name
   location                        = azurerm_resource_group.cle-rg.location
-  size                            = "Standard_D2ds_v5"
+  size                            = var.vm_sku
   network_interface_ids           = [azurerm_network_interface.client-nic.id]
 
   admin_username = "adminuser"
@@ -280,7 +280,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "server-vmss" {
   name                            = "server-vmss"
   resource_group_name             = azurerm_resource_group.cle-rg.name
   location                        = azurerm_resource_group.cle-rg.location
-  sku                            = "Standard_D2ds_v5"
+  sku                             = var.vm_sku
   instances = 2
 
   admin_username = "adminuser"
