@@ -27,11 +27,13 @@ func main() {
 	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
 	fmt.Println("Connecting to", url)
 
-	var count, total uint64
+	var count, total, limit uint64
 	count = 0
 	total = 1000000
+	limit = 100
 	if len(os.Args) > 2 {
 		total, _ = strconv.ParseUint(os.Args[2], 10, 64)
+		limit, _ = strconv.ParseUint(os.Args[3], 10, 64)
 	}
 	fmt.Printf("%v connections to be established\n", total)
 	config := createTlsConfig()
@@ -41,8 +43,9 @@ func main() {
 	defer cancel()
 
 	// Create an errgroup with derived context
+	fmt.Printf("Set limit to %v parallel connections\n", limit)
 	eg, ctx := errgroup.WithContext(ctx)
-	eg.SetLimit(100)
+	eg.SetLimit(int(limit))
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {

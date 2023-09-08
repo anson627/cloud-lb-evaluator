@@ -1,9 +1,8 @@
 #!/bin/bash
 
 tag=$1
-side=$2
-public_ip=${3:-''}
-iteration=${4:-1000000}
+timeout=${2:-32}
+side="server"
 
 cd /home/adminuser
 curl -L -s -o ${side}.tar.gz https://github.com/anson627/cloud-lb-evaluator/releases/download/$tag/${side}.tar.gz
@@ -11,11 +10,6 @@ tar -xzvf ${side}.tar.gz
 rm ${side}.tar.gz
 
 cd ${side}_build
-if [[ "$side" == "client" ]]; then
-  echo "Running client"
-  ./${side} $public_ip $iteration &> logs.txt &
-else
-  echo "Running server"
-  ./${side} &> logs.txt &
-fi
+echo "Running server"
+./${side} $timeout &> logs.txt &
 ps -ef | grep $side
