@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -25,6 +26,13 @@ func getLocalIP() string {
 }
 
 func main() {
+	var timeout uint64
+	timeout = 32
+	if len(os.Args) > 1 {
+		timeout, _ = strconv.ParseUint(os.Args[1], 10, 64)
+	}
+	fmt.Printf("Set read header timeout to %v seconds\n", timeout)
+
 	// Serve the healthz endpoint.
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "ok\n")
@@ -77,7 +85,7 @@ func main() {
 	httpsServer := &http.Server{
 		Addr:              ":4443",
 		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 10 * time.Second, // https://github.com/kubernetes/kubernetes/blob/aa8cb97f65fe1d24e96eda129337d86109615570/staging/src/k8s.io/apiserver/pkg/server/secure_serving.go#L172
+		ReadHeaderTimeout: time.Duration(int(timeout)) * time.Second, // https://github.com/kubernetes/kubernetes/blob/aa8cb97f65fe1d24e96eda129337d86109615570/staging/src/k8s.io/apiserver/pkg/server/secure_serving.go#L172
 	}
 	go func() {
 		defer wg.Done()
