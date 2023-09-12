@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -88,6 +89,7 @@ func createTlsConfig() *tls.Config {
 }
 
 func connect(config *tls.Config, url string) {
+	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
 	transport := &http.Transport{
@@ -99,7 +101,7 @@ func connect(config *tls.Config, url string) {
 			}
 
 			// Wrap the connection to intercept Read and Write methods
-			capturedConn := &capturedConn{Conn: conn}
+			capturedConn.setConn(conn)
 			return capturedConn, nil
 		},
 		TLSClientConfig: config,
@@ -121,7 +123,7 @@ func connect(config *tls.Config, url string) {
 	// Send the request and get the response.
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("%v, %v, Failed to send request: %v\n", time.Now(), createTime, err)
+		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", time.Now(), createTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
 		return
 	}
@@ -150,6 +152,7 @@ func dumpResponse(resp *http.Response) {
 // Custom net.Conn implementation that captures TCP packets
 type capturedConn struct {
 	net.Conn
+	sync.Mutex
 }
 
 // Override Read method to capture incoming packets
@@ -170,4 +173,19 @@ func (c *capturedConn) Write(b []byte) (int, error) {
 		fmt.Printf("%s sent - remote: %s, local: %s\n", time.Now(), c.Conn.RemoteAddr(), c.Conn.LocalAddr())
 	}
 	return n, err
+}
+
+func (c *capturedConn) setConn(conn net.Conn) {
+	c.Lock()
+	defer c.Unlock()
+	c.Conn = conn
+}
+
+func (c *capturedConn) getPort() int {
+	c.Lock()
+	defer c.Unlock()
+	if c.Conn == nil {
+		return -1
+	}
+	return c.Conn.LocalAddr().(*net.TCPAddr).Port
 }
