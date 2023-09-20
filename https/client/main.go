@@ -24,6 +24,21 @@ func main() {
 		return
 	}
 
+	durationMap := map[string]int{
+		"error":     0,
+		"<1s":       0,
+		"1s-2s":     0,
+		"2s-5s":     0,
+		"5s-10s":    0,
+		"10s-30s":   0,
+		"30s-60s":   0,
+		"60s-120s":  0,
+		"120s-180s": 0,
+		"180s-240s": 0,
+		"240s-300s": 0,
+		">300s":     0,
+	}
+
 	// Replace the URL with your WebSocket server's URL.
 	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
 	fmt.Println("Connecting to", url)
@@ -50,10 +65,40 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			connect(config, url)
+			duration := connect(config, url)
+			switch {
+			case duration < 0:
+				durationMap["error"]++
+			case duration >= 0 && duration < 1:
+				durationMap["<1s"]++
+			case duration >= 1 && duration < 2:
+				durationMap["1s-2s"]++
+			case duration >= 2 && duration < 5:
+				durationMap["2s-5s"]++
+			case duration >= 5 && duration < 10:
+				durationMap["5s-10s"]++
+			case duration >= 10 && duration < 30:
+				durationMap["10s-30s"]++
+			case duration >= 30 && duration < 60:
+				durationMap["30s-60s"]++
+			case duration >= 60 && duration < 120:
+				durationMap["60s-120s"]++
+			case duration >= 120 && duration < 180:
+				durationMap["120s-180s"]++
+			case duration >= 180 && duration < 240:
+				durationMap["180s-240s"]++
+			case duration >= 240 && duration < 300:
+				durationMap["240s-300s"]++
+			case duration >= 300:
+				durationMap[">300s"]++
+			}
+
 			v := atomic.AddUint64(&count, 1)
 			if v%10000 == 0 {
 				fmt.Printf("%v times %v\n", v, time.Now())
+				for k, v := range durationMap {
+					fmt.Printf("%v: %v\n", k, v)
+				}
 			}
 			return nil
 		})
@@ -88,7 +133,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string) {
+func connect(config *tls.Config, url string) float64 {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -113,19 +158,21 @@ func connect(config *tls.Config, url string) {
 	}
 
 	// Create an HTTP request.
-	createTime := time.Now()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf("%v, Failed to create request: %v\n", createTime, err)
-		return
+		fmt.Printf("%v, Failed to create request: %v\n", time.Now(), err)
+		return -1
 	}
 
 	// Send the request and get the response.
+	startTime := time.Now()
 	resp, err := client.Do(req)
+	endTime := time.Now()
+
 	if err != nil {
-		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", time.Now(), createTime, capturedConn.getPort(), err)
+		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", endTime, startTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
-		return
+		return -1
 	}
 	defer resp.Body.Close()
 
@@ -134,6 +181,8 @@ func connect(config *tls.Config, url string) {
 	}
 
 	client.CloseIdleConnections()
+
+	return endTime.Sub(startTime).Seconds()
 }
 
 func dumpResponse(resp *http.Response) {
