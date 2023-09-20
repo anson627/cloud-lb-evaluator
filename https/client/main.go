@@ -183,11 +183,12 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) 
 	startTime := time.Now()
 	resp, err := client.Do(req)
 	endTime := time.Now()
+	duration := endTime.Sub(startTime).Seconds()
 
 	if err != nil {
 		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", endTime, startTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
-		return -1
+		return duration
 	}
 	defer resp.Body.Close()
 
@@ -197,7 +198,7 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) 
 
 	client.CloseIdleConnections()
 
-	return endTime.Sub(startTime).Seconds()
+	return duration
 }
 
 func dumpResponse(resp *http.Response) {
