@@ -194,6 +194,7 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) 
 
 	if resp != nil && resp.StatusCode != 200 {
 		dumpResponse(resp)
+		return duration
 	}
 
 	client.CloseIdleConnections()
