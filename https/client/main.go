@@ -38,6 +38,7 @@ func main() {
 		"240s-300s": 0,
 		">300s":     0,
 	}
+	keys := []string{"<1s", "1s-2s", "2s-5s", "5s-10s", "10s-30s", "30s-60s", "60s-120s", "120s-180s", "180s-240s", "240s-300s", ">300s", "error"}
 
 	// Replace the URL with your WebSocket server's URL.
 	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
@@ -63,9 +64,13 @@ func main() {
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(limit))
 
+	mu := sync.Mutex{}
+
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
 			duration := connect(config, url)
+
+			mu.Lock()
 			switch {
 			case duration < 0:
 				durationMap["error"]++
@@ -92,12 +97,14 @@ func main() {
 			case duration >= 300:
 				durationMap[">300s"]++
 			}
+			mu.Unlock()
 
 			v := atomic.AddUint64(&count, 1)
 			if v%10000 == 0 {
 				fmt.Printf("%v times %v\n", v, time.Now())
-				for k, v := range durationMap {
-					fmt.Printf("%v: %v\n", k, v)
+				fmt.Printf("Duration distribution:\n")
+				for _, k := range keys {
+					fmt.Printf("%v: %v\n", k, durationMap[k])
 				}
 			}
 			return nil
