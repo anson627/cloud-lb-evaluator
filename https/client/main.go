@@ -16,6 +16,10 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 )
 
 func main() {
@@ -48,12 +52,19 @@ func main() {
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(limit))
 
+	var values plotter.Values
+
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			connect(config, url)
+			duration := connect(config, url)
+			if duration != -1 {
+				values = append(values, duration)
+			}
+
 			v := atomic.AddUint64(&count, 1)
 			if v%10000 == 0 {
 				fmt.Printf("%v times %v\n", v, time.Now())
+				plotAndSave(values)
 			}
 			return nil
 		})
@@ -88,7 +99,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string) {
+func connect(config *tls.Config, url string) float64 {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -113,19 +124,21 @@ func connect(config *tls.Config, url string) {
 	}
 
 	// Create an HTTP request.
-	createTime := time.Now()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		fmt.Printf("%v, Failed to create request: %v\n", createTime, err)
-		return
+		fmt.Printf("%v, Failed to create request: %v\n", time.Now(), err)
+		return -1
 	}
 
 	// Send the request and get the response.
+	startTime := time.Now()
 	resp, err := client.Do(req)
+	endTime := time.Now()
+
 	if err != nil {
-		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", time.Now(), createTime, capturedConn.getPort(), err)
+		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", endTime, startTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
-		return
+		return -1
 	}
 	defer resp.Body.Close()
 
@@ -134,6 +147,8 @@ func connect(config *tls.Config, url string) {
 	}
 
 	client.CloseIdleConnections()
+
+	return endTime.Sub(startTime).Seconds()
 }
 
 func dumpResponse(resp *http.Response) {
@@ -188,4 +203,21 @@ func (c *capturedConn) getPort() int {
 		return -1
 	}
 	return c.Conn.LocalAddr().(*net.TCPAddr).Port
+}
+
+func plotAndSave(values plotter.Values) {
+	p := plot.New()
+
+	p.Title.Text = "Histogram Plot"
+
+	hist, err := plotter.NewHist(values, 20)
+	if err != nil {
+		panic(err)
+	}
+
+	p.Add(hist)
+
+	if err := p.Save(3*vg.Inch, 3*vg.Inch, "hist.png"); err != nil {
+		panic(err)
+	}
 }
