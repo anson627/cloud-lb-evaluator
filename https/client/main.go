@@ -53,6 +53,13 @@ func main() {
 		limit, _ = strconv.ParseUint(os.Args[3], 10, 64)
 	}
 	fmt.Printf("%v connections to be established\n", total)
+
+	var handshakeTimeout int64
+	if len(os.Args) > 4 {
+		handshakeTimeout, _ = strconv.ParseInt(os.Args[4], 10, 64)
+	}
+	fmt.Print("Set handshake timeout to ", handshakeTimeout, " seconds\n")
+
 	config := createTlsConfig()
 
 	// Create context with cancellation
@@ -68,7 +75,7 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			duration := connect(config, url)
+			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second)
 
 			mu.Lock()
 			switch {
@@ -140,7 +147,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string) float64 {
+func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) float64 {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -156,7 +163,8 @@ func connect(config *tls.Config, url string) float64 {
 			capturedConn.setConn(conn)
 			return capturedConn, nil
 		},
-		TLSClientConfig: config,
+		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		TLSClientConfig:     config,
 	}
 
 	// Create a new HTTP client with the custom transport.
