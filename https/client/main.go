@@ -41,6 +41,13 @@ func main() {
 		limit, _ = strconv.ParseUint(os.Args[3], 10, 64)
 	}
 	fmt.Printf("%v connections to be established\n", total)
+
+	var handshakeTimeout int64
+	if len(os.Args) > 4 {
+		handshakeTimeout, _ = strconv.ParseInt(os.Args[4], 10, 64)
+	}
+	fmt.Print("Set handshake timeout to ", handshakeTimeout, " seconds\n")
+
 	config := createTlsConfig()
 
 	// Create context with cancellation
@@ -56,7 +63,7 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			duration := connect(config, url)
+			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second)
 			if duration != -1 {
 				values = append(values, duration)
 			}
@@ -99,7 +106,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string) float64 {
+func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) float64 {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -115,7 +122,8 @@ func connect(config *tls.Config, url string) float64 {
 			capturedConn.setConn(conn)
 			return capturedConn, nil
 		},
-		TLSClientConfig: config,
+		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		TLSClientConfig:     config,
 	}
 
 	// Create a new HTTP client with the custom transport.
@@ -208,7 +216,9 @@ func (c *capturedConn) getPort() int {
 func plotAndSave(values plotter.Values) {
 	p := plot.New()
 
-	p.Title.Text = "Histogram Plot"
+	p.Title.Text = "Duration Histogram"
+	p.Y.Label.Text = "Frequency"
+	p.X.Label.Text = "Duration (seconds)"
 
 	hist, err := plotter.NewHist(values, 20)
 	if err != nil {
@@ -217,7 +227,7 @@ func plotAndSave(values plotter.Values) {
 
 	p.Add(hist)
 
-	if err := p.Save(3*vg.Inch, 3*vg.Inch, "hist.png"); err != nil {
+	if err := p.Save(10*vg.Inch, 8*vg.Inch, "hist.png"); err != nil {
 		panic(err)
 	}
 }

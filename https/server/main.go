@@ -4,14 +4,31 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
+
+type tlsHandshakeErrorWriter struct {
+	out io.Writer
+}
+
+const tlsHandshakeErrorPrefix = "http: TLS handshake error"
+
+func (w *tlsHandshakeErrorWriter) Write(p []byte) (int, error) {
+	if strings.Contains(string(p), tlsHandshakeErrorPrefix) {
+		log.Printf("Handled at %v with error %v\n", time.Now(), string(p))
+		return len(p), nil
+	}
+
+	return w.out.Write(p)
+}
 
 func getLocalIP() string {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
@@ -41,7 +58,7 @@ func main() {
 	localIP := getLocalIP()
 	// Serve the readyz endpoint.
 	http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		message := fmt.Sprintf("Received at %v from %s\n", time.Now(), localIP)
+		message := fmt.Sprintf("Received at %v from %s to %s\n", time.Now(), localIP, r.RemoteAddr)
 		fmt.Fprintf(w, message)
 	})
 
@@ -87,6 +104,10 @@ func main() {
 		TLSConfig:         tlsConfig,
 		ReadHeaderTimeout: time.Duration(int(timeout)) * time.Second, // https://github.com/kubernetes/kubernetes/blob/aa8cb97f65fe1d24e96eda129337d86109615570/staging/src/k8s.io/apiserver/pkg/server/secure_serving.go#L172
 	}
+	tlsErrorWriter := &tlsHandshakeErrorWriter{os.Stderr}
+	tlsErrorLogger := log.New(tlsErrorWriter, "", 0)
+	httpsServer.ErrorLog = tlsErrorLogger
+
 	go func() {
 		defer wg.Done()
 		log.Println("Starting HTTPS server on port 4443")
