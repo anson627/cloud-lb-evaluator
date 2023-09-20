@@ -57,7 +57,7 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			connect(config, url, time.Duration(handshakeTimeout))
+			connect(config, url, time.Duration(handshakeTimeout)*time.Second)
 			v := atomic.AddUint64(&count, 1)
 			if v%10000 == 0 {
 				fmt.Printf("%v times %v\n", v, time.Now())
