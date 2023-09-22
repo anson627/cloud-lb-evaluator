@@ -78,6 +78,7 @@ func main() {
 			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second)
 
 			mu.Lock()
+			defer mu.Unlock()
 			switch {
 			case duration < 0:
 				durationMap["error"]++
@@ -104,7 +105,6 @@ func main() {
 			case duration >= 300:
 				durationMap[">300s"]++
 			}
-			mu.Unlock()
 
 			v := atomic.AddUint64(&count, 1)
 			if v%10000 == 0 {
