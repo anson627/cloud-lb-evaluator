@@ -72,6 +72,12 @@ func main() {
 	}
 	fmt.Print("Set handshake timeout to ", handshakeTimeout, " seconds\n")
 
+	var disableKeepAlives bool
+	if len(os.Args) > 6 {
+		disableKeepAlives, _ = strconv.ParseBool(os.Args[6])
+	}
+	fmt.Print("Set disable keep alives to ", disableKeepAlives, "\n")
+
 	var config *tls.Config
 	if port == "443" {
 		config = createTlsConfig()
@@ -89,7 +95,7 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second)
+			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second, disableKeepAlives)
 
 			mu.Lock()
 			defer mu.Unlock()
@@ -161,7 +167,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) float64 {
+func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, disableKeepAlives bool) float64 {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -178,6 +184,7 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) 
 			return capturedConn, nil
 		},
 		TLSHandshakeTimeout: tlsHandshakeTimeout,
+		DisableKeepAlives:   disableKeepAlives,
 		TLSClientConfig:     config,
 	}
 
@@ -210,8 +217,6 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration) 
 		dumpResponse(resp)
 		return duration
 	}
-
-	client.CloseIdleConnections()
 
 	return duration
 }
