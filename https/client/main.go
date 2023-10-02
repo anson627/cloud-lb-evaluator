@@ -23,6 +23,18 @@ func main() {
 		fmt.Println("Please provide the load balancer URL or IP address.")
 		return
 	}
+	hostname := os.Args[1]
+	port := "443"
+	if len(os.Args) > 2 {
+		port = os.Args[2]
+	}
+	// Replace the URL with your WebSocket server's URL.
+	protocl := "http"
+	if port == "443" {
+		protocl = "https"
+	}
+	url := fmt.Sprintf("%s://%s:%s/readyz", protocl, hostname, port)
+	fmt.Println("Connecting to", url)
 
 	durationMap := map[string]int{
 		"error":     0,
@@ -40,34 +52,36 @@ func main() {
 	}
 	keys := []string{"<1s", "1s-2s", "2s-5s", "5s-10s", "10s-30s", "30s-60s", "60s-120s", "120s-180s", "180s-240s", "240s-300s", ">300s", "error"}
 
-	// Replace the URL with your WebSocket server's URL.
-	url := fmt.Sprintf("https://%s:443/readyz", os.Args[1])
-	fmt.Println("Connecting to", url)
-
 	var count, total, limit uint64
 	count = 0
 	total = 1000000
-	limit = 100
-	if len(os.Args) > 2 {
-		total, _ = strconv.ParseUint(os.Args[2], 10, 64)
-		limit, _ = strconv.ParseUint(os.Args[3], 10, 64)
+	if len(os.Args) > 3 {
+		total, _ = strconv.ParseUint(os.Args[3], 10, 64)
 	}
-	fmt.Printf("%v connections to be established\n", total)
+	fmt.Printf("%v total connections to be established\n", total)
+
+	limit = 100
+	if len(os.Args) > 4 {
+		limit, _ = strconv.ParseUint(os.Args[4], 10, 64)
+	}
+	fmt.Printf("%v parallel connections to be established\n", limit)
 
 	var handshakeTimeout int64
-	if len(os.Args) > 4 {
-		handshakeTimeout, _ = strconv.ParseInt(os.Args[4], 10, 64)
+	if len(os.Args) > 5 {
+		handshakeTimeout, _ = strconv.ParseInt(os.Args[5], 10, 64)
 	}
 	fmt.Print("Set handshake timeout to ", handshakeTimeout, " seconds\n")
 
-	config := createTlsConfig()
+	var config *tls.Config
+	if port == "443" {
+		config = createTlsConfig()
+	}
 
 	// Create context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Create an errgroup with derived context
-	fmt.Printf("Set limit to %v parallel connections\n", limit)
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(int(limit))
 
