@@ -93,7 +93,7 @@ func main() {
 	// Create a TLS config with the custom CA certificate pool and server certificate
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientAuth: tls.NoClientCert,
 		Certificates: []tls.Certificate{
 			cert,
 		},
