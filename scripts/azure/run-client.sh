@@ -2,8 +2,11 @@
 
 tag=$1
 public_ip=${2:-''}
-iteration=${3:-1000000}
-limit=${4:-100}
+port=${3:-443}
+iteration=${4:-1000000}
+limit=${5:-100}
+timeout=${6:-10}
+
 side="client"
 
 cd /home/adminuser
@@ -13,5 +16,5 @@ rm ${side}.tar.gz
 
 cd ${side}_build
 echo "Running client"
-./${side} $public_ip $iteration $limit &> logs.txt &
+./${side} $public_ip $port $iteration $limit $timeout &> logs.txt &
 ps -ef | grep $side

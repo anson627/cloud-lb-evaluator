@@ -95,13 +95,16 @@ func main() {
 
 	for atomic.LoadUint64(&count) < total {
 		eg.Go(func() error {
-			duration := connect(config, url, time.Duration(handshakeTimeout)*time.Second, disableKeepAlives)
+			duration, isErr := connect(config, url, time.Duration(handshakeTimeout)*time.Second, disableKeepAlives)
 
 			mu.Lock()
 			defer mu.Unlock()
-			switch {
-			case duration < 0:
+
+			if isErr {
 				durationMap["error"]++
+			}
+
+			switch {
 			case duration >= 0 && duration < 1:
 				durationMap["<1s"]++
 			case duration >= 1 && duration < 2:
@@ -167,7 +170,7 @@ func createTlsConfig() *tls.Config {
 	}
 }
 
-func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, disableKeepAlives bool) float64 {
+func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, disableKeepAlives bool) (float64, bool) {
 	capturedConn := &capturedConn{}
 
 	// Create a new HTTP transport with the custom TLS configuration.
@@ -197,7 +200,7 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Printf("%v, Failed to create request: %v\n", time.Now(), err)
-		return -1
+		return -1, true
 	}
 
 	// Send the request and get the response.
@@ -209,16 +212,16 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, 
 	if err != nil {
 		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", endTime, startTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
-		return duration
+		return duration, true
 	}
 	defer resp.Body.Close()
 
 	if resp != nil && resp.StatusCode != 200 {
 		dumpResponse(resp)
-		return duration
+		return duration, true
 	}
 
-	return duration
+	return duration, false
 }
 
 func dumpResponse(resp *http.Response) {
