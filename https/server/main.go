@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type tlsHandshakeErrorWriter struct {
@@ -90,6 +92,7 @@ func main() {
 		log.Fatalf("Error loading server certificate and key: %v", err)
 	}
 
+	uuid := uuid.New().String()
 	// Create a TLS config with the custom CA certificate pool and server certificate
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,
@@ -97,6 +100,7 @@ func main() {
 		Certificates: []tls.Certificate{
 			cert,
 		},
+		NextProtos: []string{uuid, "h2"},
 	}
 
 	httpsServer := &http.Server{
@@ -105,7 +109,7 @@ func main() {
 		ReadHeaderTimeout: time.Duration(int(timeout)) * time.Second, // https://github.com/kubernetes/kubernetes/blob/aa8cb97f65fe1d24e96eda129337d86109615570/staging/src/k8s.io/apiserver/pkg/server/secure_serving.go#L172
 	}
 	tlsErrorWriter := &tlsHandshakeErrorWriter{os.Stderr}
-	tlsErrorLogger := log.New(tlsErrorWriter, "", 0)
+	tlsErrorLogger := log.New(tlsErrorWriter, uuid, 0)
 	httpsServer.ErrorLog = tlsErrorLogger
 
 	go func() {
