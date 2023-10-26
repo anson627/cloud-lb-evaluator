@@ -13,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type tlsHandshakeErrorWriter struct {
@@ -92,7 +90,6 @@ func main() {
 		log.Fatalf("Error loading server certificate and key: %v", err)
 	}
 
-	uuid := uuid.New().String()
 	// Create a TLS config with the custom CA certificate pool and server certificate
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,
@@ -100,7 +97,6 @@ func main() {
 		Certificates: []tls.Certificate{
 			cert,
 		},
-		NextProtos: []string{uuid, "h2"},
 	}
 
 	httpsServer := &http.Server{

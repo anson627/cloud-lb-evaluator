@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -174,10 +173,6 @@ func createTlsConfig() *tls.Config {
 func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, disableKeepAlives bool) (float64, bool) {
 	capturedConn := &capturedConn{}
 
-	// Generate a random UUID to be used as the ALPN token.
-	uuid := uuid.New().String()
-	config.NextProtos = []string{uuid, "h2"}
-
 	// Create a new HTTP transport with the custom TLS configuration.
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -215,7 +210,7 @@ func connect(config *tls.Config, url string, tlsHandshakeTimeout time.Duration, 
 	duration := endTime.Sub(startTime).Seconds()
 
 	if err != nil {
-		fmt.Printf("%v, %v, Failed to send request with port %v, uuid %v and error: %v\n", endTime, startTime, capturedConn.getPort(), uuid, err)
+		fmt.Printf("%v, %v, Failed to send request with port %v and error: %v\n", endTime, startTime, capturedConn.getPort(), err)
 		dumpResponse(resp)
 		return duration, true
 	}
